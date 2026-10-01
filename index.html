@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stack Simulation</title>
+<style>
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #eef2f7;
+}
+
+.stage {
+  width: min(1000px, 96vw);
+  min-height: 650px;
+  margin: 20px auto;
+  padding: 20px;
+  border: 1px solid #cbd5e1;
+  border-radius: 18px;
+  background: #f8fafc;
+  overflow: hidden;
+}
+
+.instruction {
+  text-align: center;
+  color: #64748b;
+  font-size: 15px;
+  margin-bottom: 10px;
+}
+
+.scene {
+  position: relative;
+  height: 430px;
+}
+
+.stack-zone {
+  position: absolute;
+  left: 50%;
+  top: 20px;
+  transform: translateX(-50%);
+  width: 210px;
+  text-align: center;
+}
+
+.stack-title {
+  font-size: 18px;
+  font-weight: bold;
+  margin-bottom: 10px;
+}
+
+.stack-body {
+  width: 190px;
+  height: 280px;
+  margin: auto;
+  padding: 5px 8px;
+  border-left: 8px solid #64748b;
+  border-right: 8px solid #64748b;
+  border-bottom: 8px solid #64748b;
+  border-radius: 0 0 12px 12px;
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: center;
+  gap: 4px;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent 48px,
+    #cbd5e1 49px,
+    #cbd5e1 50px
+  );
+}
+
+.slot {
+  width: 158px;
+  height: 43px;
+  flex: none;
+  border: 1px dashed #cbd5e1;
+  border-radius: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #94a3b8;
+  font-size: 12px;
+}
+
+.stack-item {
+  width: 158px;
+  height: 39px;
+  flex: none;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: bold;
+  box-shadow: 0 2px 4px #0003;
+}
+
+.labels {
+  position: absolute;
+  inset: 0;
+}
+
+.label-btn {
+  position: absolute;
+  width: 92px;
+  height: 46px;
+  border: 0;
+  border-radius: 10px;
+  color: white;
+  font-size: 15px;
+  font-weight: bold;
+  cursor: pointer;
+  box-shadow: 0 3px 7px #0003;
+  z-index: 5;
+}
+
+.label-btn:hover {
+  filter: brightness(1.08);
+}
+
+.label-btn.on-stack {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.hana { background: #e45756; left: 8%; top: 12%; }
+.shea { background: #3a86ff; right: 8%; top: 9%; }
+.neya { background: #8338ec; left: 7%; top: 57%; }
+.abel { background: #fb8500; right: 8%; top: 58%; }
+.noel { background: #2a9d8f; right: 18%; top: 79%; }
+
+.label-editor {
+  width: 82%;
+  height: 28px;
+  border: 0;
+  border-radius: 5px;
+  text-align: center;
+  font: inherit;
+  font-weight: bold;
+  color: #1f2937;
+  padding: 2px 5px;
+  outline: 2px solid white;
+}
+
+.message {
+  position: absolute;
+  left: 50%;
+  top: 365px;
+  transform: translateX(-50%) scale(.9);
+  min-width: 250px;
+  max-width: 90%;
+  padding: 12px 20px;
+  border-radius: 12px;
+  background: #172033;
+  color: white;
+  text-align: center;
+  font-weight: bold;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 20;
+}
+
+.message.show {
+  opacity: 1;
+  transform: translateX(-50%) scale(1);
+  animation: blink .8s ease-in-out infinite;
+}
+
+.message.empty {
+  background: #b91c1c;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .2; }
+}
+
+.mode {
+  min-height: 25px;
+  text-align: center;
+  color: #475569;
+  font-size: 13px;
+}
+
+.controls {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+.activity {
+  min-width: 105px;
+  padding: 12px 20px;
+  border: 1px solid #94a3b8;
+  border-radius: 9px;
+  background: white;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.activity.active {
+  background: #dbeafe;
+  border-color: #60a5fa;
+  color: #1d4ed8;
+}
+
+@media (max-width: 560px) {
+  .stage { width: 98vw; padding: 12px; }
+  .scene { height: 450px; }
+  .label-btn { width: 82px; height: 42px; font-size: 13px; }
+  .hana { left: 1%; }
+  .shea { right: 1%; }
+  .neya { left: 1%; }
+  .abel { right: 1%; }
+  .noel { right: 10%; }
+  .message { top: 385px; }
+  .activity { min-width: 80px; padding: 10px 12px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .message.show { animation: none; }
+}
+</style>
+</head>
+
+<body>
+
+<div class="stage" id="stackApp">
+
+  <div class="instruction">
+    <H2>Click a label to edit it</H2>
+    <H2>Double-click a label to Push it.</H2>
+  </div>
+
+  <div class="scene">
+
+    <div class="stack-zone">
+      <div class="stack-title">STACK</div>
+      <div class="stack-body" id="stackBody"></div>
+    </div>
+
+    <div class="labels">
+
+      <button class="label-btn hana" data-name="Hana">Hana</button>
+      <button class="label-btn shea" data-name="Shea">Shea</button>
+      <button class="label-btn neya" data-name="Neya">Neya</button>
+      <button class="label-btn abel" data-name="Abel">Abel</button>
+      <button class="label-btn noel" data-name="Noel">Noel</button>
+
+    </div>
+
+    <div class="message" id="message"></div>
+
+  </div>
+
+  <div class="mode" id="mode">
+    Click a label to edit it; double-click to Push it.
+  </div>
+
+  <div class="controls">
+
+    <button class="activity active" data-action="push">Push</button>
+    <button class="activity" data-action="pop">Pop</button>
+    <button class="activity" data-action="peek">Peek</button>
+    <button class="activity" data-action="display">Display</button>
+
+  </div>
+
+</div>
+
+<script>
+const stack = [];
+
+let operation = "push";
+let messageTimer = null;
+
+const colors = {
+  Hana: "#e45756",
+  Shea: "#3a86ff",
+  Neya: "#8338ec",
+  Abel: "#fb8500",
+  Noel: "#2a9d8f"
+};
+
+const stackBody = document.getElementById("stackBody");
+const message = document.getElementById("message");
+const mode = document.getElementById("mode");
+const labels = Array.from(document.querySelectorAll(".label-btn"));
+const activities = Array.from(document.querySelectorAll(".activity"));
+
+function render() {
+
+  stackBody.innerHTML = "";
+
+  for (let i = 0; i < 5; i++) {
+
+    if (i < stack.length) {
+
+      const item = document.createElement("div");
+
+      item.className = "stack-item";
+      item.textContent = stack[i];
+      item.style.background = colors[stack[i]] || "#475569";
+
+      stackBody.appendChild(item);
+
+    } else {
+
+      const slot = document.createElement("div");
+
+      slot.className = "slot";
+      slot.textContent = "empty";
+
+      stackBody.appendChild(slot);
+    }
+  }
+
+  labels.forEach(button => {
+
+    button.classList.toggle(
+      "on-stack",
+      stack.includes(button.dataset.name)
+    );
+
+  });
+}
+
+function flash(text, duration, isError) {
+
+  clearTimeout(messageTimer);
+
+  message.textContent = text;
+
+  message.classList.toggle("empty", Boolean(isError));
+  message.classList.add("show");
+
+  messageTimer = setTimeout(() => {
+
+    message.classList.remove("show");
+
+  }, duration || 3000);
+}
+
+function setOperation(newOperation) {
+
+  operation = newOperation;
+
+  activities.forEach(button => {
+
+    button.classList.toggle(
+      "active",
+      button.dataset.action === operation
+    );
+
+  });
+
+  if (operation === "push") {
+    mode.innerHTML =
+      "Click a label to edit it; double-click to <b>Push</b> it.";
+  }
+
+  if (operation === "pop") {
+    mode.innerHTML =
+      "Press <b>Pop</b> to remove the top element.";
+  }
+
+  if (operation === "peek") {
+    mode.innerHTML =
+      "Press <b>Peek</b> to inspect the top element.";
+  }
+
+  if (operation === "display") {
+    mode.innerHTML =
+      "Press <b>Display</b> to show the stack from top to bottom.";
+  }
+}
+
+function saveLabel(button, oldName, input) {
+
+  const newName = input.value.trim();
+
+  if (!newName) {
+    button.textContent = oldName;
+    button.dataset.editing = "false";
+    flash("Label cannot be empty", 3000, true);
+    return;
+  }
+
+  if (newName !== oldName) {
+
+    const duplicate = labels.some(other =>
+      other !== button &&
+      other.dataset.name.toLowerCase() === newName.toLowerCase()
+    );
+
+    if (duplicate) {
+      button.textContent = oldName;
+      button.dataset.editing = "false";
+      flash('"' + newName + '" is already being used', 4000, true);
+      return;
+    }
+
+    button.dataset.name = newName;
+
+    for (let i = 0; i < stack.length; i++) {
+
+      if (stack[i] === oldName) {
+        stack[i] = newName;
+      }
+    }
+
+    colors[newName] = colors[oldName];
+    delete colors[oldName];
+  }
+
+  button.textContent = button.dataset.name;
+  button.dataset.editing = "false";
+
+  render();
+}
+
+function beginEdit(button) {
+
+  if (button.dataset.editing === "true") {
+    return;
+  }
+
+  const oldName = button.dataset.name;
+
+  button.dataset.editing = "true";
+
+  const input = document.createElement("input");
+
+  input.className = "label-editor";
+  input.type = "text";
+  input.value = oldName;
+  input.maxLength = 20;
+
+  button.textContent = "";
+  button.appendChild(input);
+
+  input.focus();
+  input.select();
+
+  input.addEventListener("blur", () => {
+
+    saveLabel(button, oldName, input);
+
+  });
+
+  input.addEventListener("keydown", event => {
+
+    if (event.key === "Enter") {
+
+      event.preventDefault();
+      input.blur();
+
+    }
+
+    if (event.key === "Escape") {
+
+      event.preventDefault();
+
+      input.value = oldName;
+      input.blur();
+
+    }
+  });
+}
+
+function pushAnimation(button, name) {
+
+  const from = button.getBoundingClientRect();
+  const target = stackBody.getBoundingClientRect();
+
+  const ghost = button.cloneNode(true);
+
+  ghost.style.position = "fixed";
+  ghost.style.left = from.left + "px";
+  ghost.style.top = from.top + "px";
+  ghost.style.margin = "0";
+  ghost.style.zIndex = "100";
+  ghost.style.pointerEvents = "none";
+
+  document.body.appendChild(ghost);
+
+  button.style.visibility = "hidden";
+
+  const x =
+    target.left +
+    target.width / 2 -
+    from.width / 2;
+
+  const y =
+    target.bottom -
+    53 -
+    stack.length * 47;
+
+  const finish = () => {
+
+    ghost.remove();
+
+    button.style.visibility = "";
+
+    stack.push(name);
+
+    render();
+
+    flash(name + " pushed", 3000, false);
+  };
+
+  ghost.animate(
+    [
+      { transform: "translate(0,0) scale(1)" },
+      {
+        transform:
+          "translate(" +
+          (x - from.left) +
+          "px," +
+          (y - from.top) +
+          "px) scale(1.02)"
+      }
+    ],
+    {
+      duration: 650,
+      easing: "cubic-bezier(.2,.8,.25,1)",
+      fill: "forwards"
+    }
+  ).onfinish = finish;
+}
+
+function popAnimation(name) {
+
+  const button = labels.find(
+    item => item.dataset.name === name
+  );
+
+  const items =
+    Array.from(stackBody.querySelectorAll(".stack-item"));
+
+  const item = items.find(
+    element => element.textContent === name
+  );
+
+  if (!button || !item) {
+    render();
+    flash(name + " popped", 3000, false);
+    return;
+  }
+
+  const from = item.getBoundingClientRect();
+  const to = button.getBoundingClientRect();
+
+  const ghost = item.cloneNode(true);
+
+  ghost.style.position = "fixed";
+  ghost.style.left = from.left + "px";
+  ghost.style.top = from.top + "px";
+  ghost.style.margin = "0";
+  ghost.style.zIndex = "100";
+  ghost.style.pointerEvents = "none";
+
+  document.body.appendChild(ghost);
+
+  item.style.visibility = "hidden";
+  button.style.visibility = "hidden";
+
+  ghost.animate(
+    [
+      { transform: "translate(0,0)" },
+      {
+        transform:
+          "translate(" +
+          (to.left - from.left) +
+          "px," +
+          (to.top - from.top) +
+          "px)"
+      }
+    ],
+    {
+      duration: 600,
+      easing: "cubic-bezier(.2,.8,.25,1)",
+      fill: "forwards"
+    }
+  ).onfinish = () => {
+
+    ghost.remove();
+
+    item.style.visibility = "";
+    button.style.visibility = "";
+
+    render();
+
+    flash(name + " popped", 3000, false);
+  };
+}
+
+labels.forEach(button => {
+
+  let clickTimer = null;
+
+  button.addEventListener("click", () => {
+
+    clearTimeout(clickTimer);
+
+    clickTimer = setTimeout(() => {
+      beginEdit(button);
+    }, 250);
+
+  });
+
+  button.addEventListener("dblclick", event => {
+
+    event.preventDefault();
+
+    clearTimeout(clickTimer);
+
+    if (button.dataset.editing === "true") {
+      const input = button.querySelector("input");
+
+      if (input) {
+        input.blur();
+      }
+
+      return;
+    }
+
+    const name = button.dataset.name;
+
+    if (stack.includes(name)) {
+      flash(name + " is already on the stack", 3000, true);
+      return;
+    }
+
+    if (stack.length >= 5) {
+      flash("Stack is full", 5000, true);
+      return;
+    }
+
+    pushAnimation(button, name);
+  });
+
+});
+
+activities.forEach(button => {
+
+  button.addEventListener("click", () => {
+
+    const action = button.dataset.action;
+
+    if (action === "push") {
+
+      setOperation("push");
+      return;
+    }
+
+    if (action === "pop") {
+
+      setOperation("pop");
+
+      if (stack.length === 0) {
+
+        flash(
+          "Stack underflow",
+          5000,
+          true
+        );
+
+        return;
+      }
+
+      const name =
+        stack[stack.length - 1];
+
+      stack.pop();
+
+      popAnimation(name);
+
+      return;
+    }
+
+    if (action === "peek") {
+
+      setOperation("peek");
+
+      if (stack.length === 0) {
+
+        flash(
+          "Empty stack",
+          5000,
+          true
+        );
+
+        return;
+      }
+
+      flash(
+        "Top element: " +
+        stack[stack.length - 1],
+        3000,
+        false
+      );
+
+      return;
+    }
+
+    if (action === "display") {
+
+      setOperation("display");
+
+      if (stack.length === 0) {
+
+        flash(
+          "Empty stack",
+          5000,
+          true
+        );
+
+        return;
+      }
+
+      flash(
+        stack.slice().reverse().join(" → "),
+        4000,
+        false
+      );
+    }
+
+  });
+
+});
+
+render();
+setOperation("push");
+</script>
+
+</body>
+</html>
